@@ -1,7 +1,7 @@
 /*
 	MIT License
 
-	Copyright 2017 samfun123 and Timwi
+	Copyright 2017 samfundev and Timwi
 
 	Permission is hereby granted, free of charge, to any person obtaining a copy of this file (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -35,21 +35,35 @@ e.onload = function()
             <div class='option-group'>
                 <h3>Highlighter</h3>
                 <div><input type='checkbox' id='highlighter-enabled'>&nbsp;<label for='highlighter-enabled' accesskey='h'>Enabled</label> (Alt-H)</div>
-                <div>Color:</div>
-                <blockquote>
-                    <div><input type='radio' name='highlighter-color' class='highlighter-color' id='highlighter-color-blue' data-color='0' checked>&nbsp;<label for='highlighter-color-blue' accesskey='1'>Blue</label> (Alt-1)</div>
-                    <div><input type='radio' name='highlighter-color' class='highlighter-color' id='highlighter-color-red' data-color='1'>&nbsp;<label for='highlighter-color-red' accesskey='2'>Red</label> (Alt-2)</div>
-                    <div><input type='radio' name='highlighter-color' class='highlighter-color' id='highlighter-color-green' data-color='2'>&nbsp;<label for='highlighter-color-green' accesskey='3'>Green</label> (Alt-3)</div>
-                    <div><input type='radio' name='highlighter-color' class='highlighter-color' id='highlighter-color-yellow' data-color='3'>&nbsp;<label for='highlighter-color-yellow' accesskey='4'>Yellow</label> (Alt-4)</div>
-                </blockquote>
+                <div>Color: <select id='highlighter-color'></select> (Alt-<span id='highlighter-color-index'>1</span>)</div>
+                <div>Highlights: <button id='clear-highlights' accesskey='c'>Clear</button> (Alt-C)</div>
             </div>
             <div class='option-group'>
                 <h3>Page layout</h3>
                 <div><input type='radio' name='page-layout' class='page-layout' id='page-layout-vertical'>&nbsp;<label for='page-layout-vertical' accesskey='v'><kbd>V</kbd>ertical</label></div>
                 <div><input type='radio' name='page-layout' class='page-layout' id='page-layout-side-by-side'>&nbsp;<label for='page-layout-side-by-side' accesskey='s'><kbd>S</kbd>ide by side</label></div>
             </div>
+            <div class='option-group'>
+                <h3>Dark Mode</h3>
+                <div><input type='checkbox' id='dark-mode-enabled'>&nbsp;<label for='dark-mode-enabled' accesskey='w'>Enabled</label> (Alt-W)</div>
+            </div>
         </div>`).appendTo("body");
 
+        // DARK MODE
+        function updateDarkMode()
+        {
+            if ($('#dark-mode-enabled').prop('checked'))
+            {
+                $("body").addClass("dark");
+                localStorage.setItem('ktane-dark-mode', true);
+            }
+            else
+            {
+                $("body").removeClass("dark");
+                localStorage.setItem('ktane-dark-mode', false);
+            }
+        }
+        $('#dark-mode-enabled').click(function() { updateDarkMode(); });
 
         // PAGE-LAYOUT OPTIONS
         function updateMultipageView()
@@ -69,30 +83,62 @@ e.onload = function()
 
         // HIGHLIGHTER
         let colors = [
-            { color: "rgba(68, 130, 255, 0.4)", name: 'blue' },
-            { color: "rgba(223, 32, 32, 0.4)", name: 'red' },
-            { color: "rgba(34, 195, 34, 0.4)", name: 'green' },
-            { color: "rgba(223, 223, 32, 0.4)", name: 'yellow' }];
-        let currentColor = 0;
+            { color: "rgba(128, 128, 128, 0.4)", name: 'Gray' },
+            { color: "rgba(68, 130, 255, 0.4)", name: 'Blue' },
+            { color: "rgba(223, 32, 32, 0.4)", name: 'Red' },
+            { color: "rgba(34, 195, 34, 0.4)", name: 'Green' },
+            { color: "rgba(223, 223, 32, 0.4)", name: 'Yellow' },
+            { color: "rgba(223, 0, 223, 0.4)", name: 'Magenta' },
+            { color: "rgba(223, 128, 0, 0.4)", name: 'Orange' },
+            { color: "rgba(0, 223, 223, 0.4)", name: 'Cyan' },
+            { color: "rgba(255, 255, 255, 0.4)", name: 'White' },
+            { color: "rgba(0, 0, 0, 0.4)", name: 'Black' }];
+        let currentColor = 1;
         let setColor = function(color) { currentColor = color; };   // The mobile UI overrides this function
 
         $('#highlighter-enabled').click(function() { localStorage.setItem('ktane-highlighter-enabled', $('#highlighter-enabled').prop('checked')); });
-        $('.highlighter-color').click(function(e)
+        const colorSelect = $('#highlighter-color')
+        for (const [index, color] of colors.entries()) {
+            $(`<option value="${index}">`).attr("selected", index == currentColor ? "" : undefined).text(color.name).appendTo(colorSelect);
+        }
+
+        colorSelect.on("change", function(e)
         {
-            setColor($(this).data('color'));
-            showNotification(`Highlighter color: ${colors[currentColor].name}`, colors[currentColor].color);
+            setColor(parseInt(colorSelect.val()));
+            $("#highlighter-color-index").text(currentColor);
+            showNotification(`Highlighter color: ${colors[currentColor].name.toLowerCase()}`, colors[currentColor].color);
         });
+
+        // An array of elementHighlights.
+        const highlights = [];
+        const clearHighlights = $("#clear-highlights");
+        clearHighlights.click(() => {
+            for (const elementHighlights of highlights) {
+                for (const highlight of elementHighlights) {
+                    highlight.remove();
+                }
+            }
+        })
 
         $(document).keydown(function(event)
         {
-            // Only accept shortcuts with Alt
-            if (!event.altKey || event.shiftKey || event.ctrlKey)
+            // Only accept shortcuts with Alt or Ctrl+Shift
+            if (!event.altKey && !(event.shiftKey && event.ctrlKey))
                 return;
 
             // Alt-O: Open options menu
             if (event.keyCode === 0x4F)
             {
                 options.toggleClass('open');
+            }
+            // Alt-C: Clear highlights
+            else if (event.keyCode === 67)
+            {
+                clearHighlights.click();
+            }
+            else if (event.keyCode >= 48 && event.keyCode <= 57)
+            {
+                colorSelect.val(event.keyCode - 48).change();
             }
         });
 
@@ -181,22 +227,47 @@ e.onload = function()
         function setPosition(highlight)
         {
             let a = highlight.data('obj-a'), b = highlight.data('obj-b');
-            highlight.outerWidth(a.outerWidth());
-            highlight.outerHeight(b.outerHeight());
-            highlight.css("left", a.offset().left + "px");
-            highlight.css("top", b.offset().top + "px");
-            highlight.css("transform-origin", -a.offset().left + "px " + -b.offset().top + "px");
+            // Check to see if we're parented to any overflow elements.
+            const overflowElement = a.parents().filter((_, element) => {
+                const jqueryElement = $(element);
+                const overflows = [jqueryElement.css("overflow-x"), jqueryElement.css("overflow-y")];
+                return ["hidden", "scroll", "auto", "overlay"].some(value => overflows.includes(value));
+            });
+
+            // If we have no overflow elements faster path.
+            // We also don't support more than one overflow element so fallback if that happens.
+            if (overflowElement.length !== 1) {
+                highlight.outerWidth(a.outerWidth());
+                highlight.outerHeight(b.outerHeight());
+                highlight.css("left", a.offset().left + "px");
+                highlight.css("top", b.offset().top + "px");
+                highlight.css("transform-origin", -a.offset().left + "px " + -b.offset().top + "px");
+                return;
+            }
+            
+            // This is a whole bunch of math that tries to "clip" the highlight so that it's inside of it's overflow element.
+            const outerClipBox = overflowElement[0].getBoundingClientRect();
+            const left = Math.max(a.offset().left, scrollX + outerClipBox.left);
+            const top = Math.max(b.offset().top, scrollY + outerClipBox.top);
+            
+            highlight.css("left", left + "px");
+            highlight.css("top", top + "px");
+            highlight.css("transform-origin", -left + "px " + -top + "px");
+            highlight.outerWidth(Math.min(a.outerWidth() - Math.max(0, scrollX + outerClipBox.left - a.offset().left), scrollX + outerClipBox.right - left));
+            highlight.outerHeight(Math.min(b.outerHeight() - Math.max(0, scrollY + outerClipBox.top - b.offset().top), scrollY + outerClipBox.bottom - top));
         }
 
-        $("td, th, li, .highlightable").each(function()
+        function makeHighlightable(element)
         {
-            let element = $(this);
-            let highlights = [];
+            // An array of highlights that have been created for this element.
+            // This is required because there are different modes of highlights that a single element can have at the same time.
+            let elementHighlights = [];
+            highlights.push(elementHighlights);
 
             function findHighlight(h)
             {
-                for (let i = 0; i < highlights.length; i++)
-                    if (highlights[i].element === h)
+                for (let i = 0; i < elementHighlights.length; i++)
+                    if (elementHighlights[i].element === h)
                         return i;
                 return -1;
             }
@@ -209,17 +280,17 @@ e.onload = function()
                 if (highlighterEnabled && thisMode !== null)
                 {
                     let ix = -1;
-                    for (let i = 0; i < highlights.length; i++)
-                        if (highlights[i].mode === thisMode)
+                    for (let i = 0; i < elementHighlights.length; i++)
+                        if (elementHighlights[i].mode === thisMode)
                             ix = i;
                     if (ix !== -1)
                     {
-                        highlights[ix].element.remove();
-                        highlights.splice(ix, 1);
+                        elementHighlights[ix].element.remove();
+                        elementHighlights.splice(ix, 1);
                     }
                     else
                     {
-                        let table = element.parents("table").first();
+                        let table = element.parents("table, .highlightable-parent").first();
 
                         let a;
                         let b;
@@ -254,32 +325,36 @@ e.onload = function()
                             highlight.css("background-color", "rgba(0, 0, 0, 0)");
                         }
 
+                        function removeHighlight()
+                        {
+                            highlight.remove();
+
+                            if (svg)
+                                element.css("fill", fill);
+
+                            window.getSelection().removeAllRanges();
+                            const ix2 = findHighlight(highlight);
+                            if (ix2 !== -1)
+                                elementHighlights.splice(ix2, 1);
+                        }
+
                         highlight.click(function(event2)
                         {
-                            let ix2;
                             if (highlighterEnabled && getMode(event2) == thisMode)
                             {
-                                highlight.remove();
-
-                                if (svg)
-                                    element.css("fill", fill);
-
-                                window.getSelection().removeAllRanges();
-                                ix2 = findHighlight(highlight);
-                                if (ix2 !== -1)
-                                    highlights.splice(ix2, 1);
+                                removeHighlight();
                             }
                             else
                             {
                                 highlight.hide();
                                 $(document.elementFromPoint(event2.clientX, event2.clientY)).trigger(event2);
-                                ix2 = findHighlight(highlight);
+                                const ix2 = findHighlight(highlight);
                                 if (ix2 !== -1)
                                     highlight.show();
                             }
                             return false;
                         });
-                        highlights.push({ mode: thisMode, element: highlight });
+                        elementHighlights.push({ mode: thisMode, element: highlight, remove: removeHighlight });
 
                         if (mobileControls)
                             highlight.insertAfter($('.ktane-highlight-btn').first());
@@ -290,7 +365,20 @@ e.onload = function()
                     return false;
                 }
             });
+        };
+
+        $("td, th, li, .highlightable").each(function() {
+            makeHighlightable($(this));
         });
+
+        new MutationObserver((mutationsList) => {
+            for (const mutation of mutationsList) {
+                for (const node of mutation.addedNodes) {
+                    if (node instanceof Element && node.matches("td, th, li, .highlightable"))
+                        makeHighlightable($(node));
+                }
+            }
+        }).observe(document.body, { subtree: true, childList: true })
 
         $(window).resize(function()
         {
@@ -300,13 +388,26 @@ e.onload = function()
             });
         });
 
+        document.body.addEventListener('scroll', event => {
+            $('.ktane-highlight').each(function(_, _e)
+            {
+                const e = $(_e);
+                if (event.target.contains(e.data('obj-a')[0]) || event.target.contains(e.data('obj-b')[0])) {
+                    setPosition(e);
+                }
+            });
+        }, true);
+
         // Read current preferences from local storage
         let highlighterEnabled = localStorage.getItem('ktane-highlighter-enabled');
-        $('#highlighter-enabled').prop('checked', highlighterEnabled === null ? true : highlighterEnabled);
+        $('#highlighter-enabled').prop('checked', highlighterEnabled === null ? true : highlighterEnabled == "true");
         let pageLayout = localStorage.getItem('ktane-page-layout') || 'vertical';
         $(`#page-layout-${pageLayout}`).prop('checked', true);
+        let darkModeEnabled = localStorage.getItem('ktane-dark-mode');
+        $('#dark-mode-enabled').prop('checked', darkModeEnabled == null ? false : darkModeEnabled == "true");
+        updateDarkMode();
         updateMultipageView();
-        setColor(0);
+        setColor(1);
     });
 };
 document.head.appendChild(e);

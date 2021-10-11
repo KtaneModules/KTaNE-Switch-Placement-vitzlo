@@ -14,9 +14,9 @@ MonoBehaviour:
   id: switchPlacement
   title: Switch Placement
   author: Vincology
-  description: "Calculate the correct positions of twelve switches arranged in a 5x5
+  description: "Calculate the correct positions of twelve switches arranged in a 5\xD75
     grid.\n\nModule by Vincology\r\n\r\nModule ID: switchPlacement\nManual can be
     found at ktane.timwi.de"
   version: v1.0.0
   outputFolder: build
-  previewImage: {fileID: 0}
+  previewImage: {fileID: 2800000, guid: c2bb518a3f51c6649a8156182b4a4287, type: 3}
